@@ -1,0 +1,11 @@
+[package]
+name = "lms_curl"
+version = "0.1.0"
+authors = ["Johnson Yuen <jyuen@seek.com.au>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+curl = "0.4.23"
+clap = "2.33.0"
