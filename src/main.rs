@@ -1,24 +1,18 @@
 extern crate clap;
 
-use std::io::{stdout, Write};
-use std::str;
-
-use std::process::Command;
-use std::io::Read;
-use std::collections::HashMap;
-
 use std::error::Error;
+use std::fs;
 use std::fs::File;
-use std::io::prelude::*;
+use std::io::Read;
 use std::path::Path;
+use std::process::Command;
+use std::str;
+use std::thread;
 
+use chrono::{DateTime, Duration, Utc};
+use clap::{App, Arg};
 use curl::easy::{Easy, List};
-use clap::{Arg, App, SubCommand};
-
 use serde::{Deserialize, Serialize};
-use serde_json::{Result, Value};
-use chrono::{DateTime, Utc, Duration};
-
 
 fn main(){
     let matches = App::new("Curl LMS Dev")
@@ -26,6 +20,7 @@ fn main(){
             .help("Sets the api path to call")
             .required(true)
             .index(1))
+        .about("Do a HTTP with the LMS Dev server, automatically handling JWT, so you don't have to")
         .get_matches();
 
     curl_api(matches.value_of("PATH").unwrap());
@@ -34,7 +29,6 @@ fn main(){
 fn curl_api(api_path: &str){
     let url = format!("http://location-management-system.sd.dev.outfra.xyz{}", api_path);
     let jwt = get_jwt();
-    let auth_header_value = format!("Bearer {}", jwt);
 
     let mut buf = Vec::new();
 
@@ -66,13 +60,17 @@ struct JWTFile {
 }
 
 fn get_jwt() -> String {
-    let file_path = "/tmp/jwt";
+    let file_path = "/tmp/jwt".to_owned();
+    let file_path_copy = file_path.clone();
     match try_read_file(file_path) {
         None => {
             let new_jwt = generate_jwt();
-            let j = JWTFile { created_at_utc: Utc::now(), jwt: new_jwt.clone() };
-            let mut output_file = File::create(file_path).unwrap();
-            serde_json::to_writer(output_file, &j);
+            let new_jwt_copy = new_jwt.clone();
+            thread::spawn( move || {
+                let j = JWTFile { created_at_utc: Utc::now(), jwt: new_jwt_copy };
+                let output_file = File::create(file_path_copy).unwrap();
+                serde_json::to_writer(output_file, &j).unwrap();
+            });
             new_jwt
         }
         Some(file_data) => {
@@ -82,6 +80,9 @@ fn get_jwt() -> String {
             if now.signed_duration_since(jwt_file.created_at_utc) < Duration::seconds(148) {
                 jwt_file.jwt
             } else {
+                thread::spawn(move || {
+                    fs::remove_file(file_path_copy).unwrap();
+                });
                 generate_jwt()
             }
         }
@@ -104,12 +105,19 @@ fn generate_jwt() -> String {
 }
 
 
-fn try_read_file(file_path: &str) -> Option<String> {
-    if Path::new(file_path).exists() {
+fn try_read_file(file_path: String) -> Option<String> {
+    if Path::new(&file_path).exists() {
         let mut buf = String::new();
-        let mut input_file = File::open(file_path).unwrap();
-        input_file.read_to_string(&mut buf);
-        Some(buf)
+        let mut input_file = File::open(&file_path).unwrap();
+        match input_file.read_to_string(&mut buf){
+            Ok(_) => Some(buf),
+            Err(_) => {
+                thread::spawn( move || {
+                    fs::remove_file(file_path).unwrap();
+                });
+                None
+            }
+        }
     } else {
         None
     }
