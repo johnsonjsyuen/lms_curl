@@ -12,3 +12,11 @@ clap = "2.33.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
+
+[lib]
+name = "lib_lms_curl"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lms_curl"
+path = "src/main.rs"
