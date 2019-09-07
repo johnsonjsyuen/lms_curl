@@ -1,9 +1,8 @@
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-extern crate lib_lms_curl;
 
-use lib_lms_curl::curl_api;
+use lms_curl::http_client_a::get_lms_path;
 
 use futures::IntoFuture;
 
@@ -15,7 +14,7 @@ use actix_web::{
 fn proxy(req: HttpRequest, proxy_path: web::Path<String>) -> String {
     println!("REQ: {:?}", req);
 
-    curl_api(proxy_path.as_str())
+    get_lms_path(proxy_path.as_str()).unwrap()
 
 }
 
