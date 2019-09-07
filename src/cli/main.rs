@@ -13,6 +13,7 @@ fn main(){
         .about("Do a HTTP with the LMS Dev server, automatically handling JWT, so you don't have to")
         .get_matches();
 
-    curl_api(matches.value_of("PATH").unwrap());
+    let resp = curl_api(matches.value_of("PATH").unwrap());
+    print!("{}",resp);
 }
 

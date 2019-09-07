@@ -13,7 +13,7 @@ use curl::easy::{Easy, List};
 use serde::{Deserialize, Serialize};
 
 
-pub fn curl_api(api_path: &str){
+pub fn curl_api(api_path: &str)->String{
     let url = format!("http://location-management-system.sd.dev.outfra.xyz{}", api_path);
     let jwt = get_jwt();
 
@@ -37,7 +37,7 @@ pub fn curl_api(api_path: &str){
 
     let resp = str::from_utf8(&buf).unwrap();
 
-    print!("{}", resp);
+    resp.to_owned()
 }
 
 #[derive(Serialize, Deserialize)]

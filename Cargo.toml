@@ -7,11 +7,17 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-curl = "0.4.23"
+actix-web = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
 clap = "2.33.0"
+curl = "0.4.23"
+env_logger = "0.6.2"
+futures = "0.1.25"
+log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
+
+
 
 [lib]
 name = "lib_lms_curl"
@@ -19,4 +25,8 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "lms_curl"
-path = "src/main.rs"
+path = "src/cli/main.rs"
+
+[[bin]]
+name = "proxy"
+path = "src/proxy/proxy.rs"
