@@ -8,6 +8,7 @@ use std::path::Path;
 use std::process::Command;
 use std::str;
 use std::thread;
+use std::sync::{Arc};
 
 use chrono::{DateTime, Duration, Utc};
 use clap::{App, Arg};
@@ -60,15 +61,15 @@ struct JWTFile {
 }
 
 fn get_jwt() -> String {
-    let file_path = "/tmp/jwt".to_owned();
-    let file_path_copy = file_path.clone();
-    match try_read_file(file_path) {
+    let file_path = Arc::new("/tmp/jwt".to_owned());
+    match try_read_file(Arc::clone(&file_path)) {
         None => {
             let new_jwt = generate_jwt();
             let new_jwt_copy = new_jwt.clone();
+            let fpc = Arc::clone(&file_path);
             thread::spawn( move || {
                 let j = JWTFile { created_at_utc: Utc::now(), jwt: new_jwt_copy };
-                let output_file = File::create(file_path_copy).unwrap();
+                let output_file = File::create(&*fpc).unwrap();
                 serde_json::to_writer(output_file, &j).unwrap();
             });
             new_jwt
@@ -80,8 +81,9 @@ fn get_jwt() -> String {
             if now.signed_duration_since(jwt_file.created_at_utc) < Duration::seconds(148) {
                 jwt_file.jwt
             } else {
+                let fpc = Arc::clone(&file_path);
                 thread::spawn(move || {
-                    fs::remove_file(file_path_copy).unwrap();
+                    fs::remove_file(&*fpc).unwrap();
                 });
                 generate_jwt()
             }
@@ -91,7 +93,7 @@ fn get_jwt() -> String {
 
 fn generate_jwt() -> String {
     let command = "/usr/local/bin/npm";
-    let xapi_repo_directory = "/Users/jyuen/code/aips-partner-portal-xapi";
+    let xapi_repo_directory = "/Users/johnson/johnsonsync/Seek/code/aips-partner-portal-xapi";
     let npm_args = vec!["run", "--silent", "generate-token", "--", "location-management-system", "jyuen@seek.com.au", "Johnson Yuen"];
 
     let output = Command::new(command)
@@ -105,15 +107,17 @@ fn generate_jwt() -> String {
 }
 
 
-fn try_read_file(file_path: String) -> Option<String> {
-    if Path::new(&file_path).exists() {
+fn try_read_file(file_path: Arc<String>) -> Option<String> {
+
+    if Path::new(&*file_path).exists() {
         let mut buf = String::new();
-        let mut input_file = File::open(&file_path).unwrap();
+        let mut input_file = File::open(&*file_path).unwrap();
         match input_file.read_to_string(&mut buf){
             Ok(_) => Some(buf),
             Err(_) => {
+                let fpc = Arc::clone(&file_path);
                 thread::spawn( move || {
-                    fs::remove_file(file_path).unwrap();
+                    fs::remove_file(&*fpc).unwrap();
                 });
                 None
             }
