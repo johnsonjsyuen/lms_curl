@@ -7,6 +7,7 @@ use std::process::Command;
 use std::str;
 use std::thread;
 use std::sync::{Arc};
+use std::ops::{Bound, RangeBounds};
 
 use chrono::{DateTime, Duration, Utc};
 use curl::easy::{Easy, List};
@@ -14,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 
 pub fn curl_api(api_path: &str){
-    let url = format!("http://location-management-system.sd.dev.outfra.xyz{}", api_path);
+    let url = format!("http://location-management-system-test.sd.dev.outfra.xyz{}", api_path);
     let jwt = get_jwt();
 
     let mut buf = Vec::new();
@@ -79,7 +80,7 @@ fn get_jwt() -> String {
 
 fn generate_jwt() -> String {
     let command = "/usr/local/bin/npm";
-    let xapi_repo_directory = "/Users/johnson/johnsonsync/Seek/code/aips-partner-portal-xapi";
+    let xapi_repo_directory = "/Users/jyuen/code/aips-partner-portal-xapi";
     let npm_args = vec!["run", "--silent", "generate-token", "--", "location-management-system", "jyuen@seek.com.au", "Johnson Yuen"];
 
     let output = Command::new(command)
@@ -110,5 +111,51 @@ fn try_read_file(file_path: Arc<String>) -> Option<String> {
         }
     } else {
         None
+    }
+}
+
+
+
+pub trait StringUtils {
+    fn substring(&self, start: usize, len: usize) -> &str;
+    fn slice(&self, range: impl RangeBounds<usize>) -> &str;
+}
+
+impl StringUtils for str {
+    fn substring(&self, start: usize, len: usize) -> &str {
+        let mut char_pos = 0;
+        let mut byte_start = 0;
+        let mut it = self.chars();
+        loop {
+            if char_pos == start { break; }
+            if let Some(c) = it.next() {
+                char_pos += 1;
+                byte_start += c.len_utf8();
+            }
+            else { break; }
+        }
+        char_pos = 0;
+        let mut byte_end = byte_start;
+        loop {
+            if char_pos == len { break; }
+            if let Some(c) = it.next() {
+                char_pos += 1;
+                byte_end += c.len_utf8();
+            }
+            else { break; }
+        }
+        &self[byte_start..byte_end]
+    }
+    fn slice(&self, range: impl RangeBounds<usize>) -> &str {
+        let start = match range.start_bound() {
+            Bound::Included(bound) | Bound::Excluded(bound) => *bound,
+            Bound::Unbounded => 0,
+        };
+        let len = match range.end_bound() {
+            Bound::Included(bound) => *bound + 1,
+            Bound::Excluded(bound) => *bound,
+            Bound::Unbounded => self.len(),
+        } - start;
+        self.substring(start, len)
     }
 }
